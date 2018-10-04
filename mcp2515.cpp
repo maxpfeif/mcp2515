@@ -44,8 +44,8 @@ MCP2515::ERROR MCP2515::reset(void)
     setRegisters(MCP_TXB1CTRL, zeros, 14);
     setRegisters(MCP_TXB2CTRL, zeros, 14);
 
-    setRegister(MCP_RXB0CTRL, 0);
-    setRegister(MCP_RXB1CTRL, 0);
+    setRegister(MCP_RXB0CTRL, 100); //changing this to 100 from 0 to enable rollover and allow overflow
+    setRegister(MCP_RXB1CTRL, 0);   // leaving this unmodified for now 
 
     setRegister(MCP_CANINTE, CANINTF_RX0IF | CANINTF_RX1IF | CANINTF_ERRIF | CANINTF_MERRF);
 
