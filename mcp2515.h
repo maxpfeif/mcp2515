@@ -234,8 +234,8 @@ class MCP2515
             CANINTF_MERRF = 0x80
         };
 
-        extern SPIClass SPI_BUS;
-        
+        // we need a reference to an SPIClass object, default to SPI0
+       SPIClass SPI_BUS = SPI;
 
     private:
         static const uint8_t CANCTRL_REQOP = 0xE0;

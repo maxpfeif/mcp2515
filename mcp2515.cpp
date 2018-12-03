@@ -13,13 +13,24 @@ const struct MCP2515::RXBn_REGS MCP2515::RXB[N_RXBUFFERS] = {
 
 MCP2515::MCP2515(const uint8_t _CS, const uint8_t _SPI_BUS)
 {
-    if(_SPI_BUS == 1) {
-        SPI_BUS = SPI1;
-    } else {
-        SPI_BUS = SPI;
-    }
-
-    SPICS = _CS;
+    // re-reference the SPI_BUS if MCP2515 object can utilize SPI1 (or SPI2 if using MK60 family)
+    #if defined(__MKL26Z64__)
+        if(_SPI_BUS == 1) {
+            SPI_BUS = SPI1;
+        } 
+    #endif
+    #if defined(__MK64FX512__) || defined(__MK66FX1M0__)
+        if(_SPI_BUS == 1) {
+            Serial.print("Initialized SPI_BUS to 1"); 
+            SPI_BUS = SPI1;
+        } else if(_SPI_BUS == 2) {
+            SPI_BUS = SPI2; 
+            Serial.print("Initialized SPI_BUS to 1"); 
+        } else {
+            Serial.print("Initialized SPI_BUS to 0"); 
+        }
+    #endif
+   
     pinMode(SPICS, OUTPUT);
     endSPI();
 }
