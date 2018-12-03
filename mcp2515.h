@@ -224,7 +224,7 @@ class MCP2515
         };
 
         enum /*class*/ CANINTF : uint8_t {
-            CANINTF_RX0IF = 0x01,
+            CANINTF_RX0IF = 0x01,                       // Need to clear this and the next one upon read 
             CANINTF_RX1IF = 0x02,
             CANINTF_TX0IF = 0x04,
             CANINTF_TX1IF = 0x08,
@@ -234,6 +234,9 @@ class MCP2515
             CANINTF_MERRF = 0x80
         };
 
+        extern SPIClass SPI_BUS;
+        
+
     private:
         static const uint8_t CANCTRL_REQOP = 0xE0;
         static const uint8_t CANCTRL_ABAT = 0x10;
@@ -242,7 +245,7 @@ class MCP2515
         static const uint8_t CANCTRL_CLKPRE = 0x03;
 
         enum /*class*/ CANCTRL_REQOP_MODE : uint8_t {
-            CANCTRL_REQOP_NORMAL     = 0x00,
+            CANCTRL_REQOP_NORMAL     = 0x00,            // I believe we can generally stay in this mode 
             CANCTRL_REQOP_SLEEP      = 0x20,
             CANCTRL_REQOP_LOOPBACK   = 0x40,
             CANCTRL_REQOP_LISTENONLY = 0x60,
@@ -253,19 +256,19 @@ class MCP2515
         static const uint8_t CANSTAT_OPMOD = 0xE0;
         static const uint8_t CANSTAT_ICOD = 0x0E;
 
-        static const uint8_t TXB_EXIDE_MASK = 0x08;
-        static const uint8_t DLC_MASK       = 0x0F;
-        static const uint8_t RTR_MASK       = 0x40;
+        static const uint8_t TXB_EXIDE_MASK = 0x08;     // 0000 1000 -> checks out against the dshieet 
+        static const uint8_t DLC_MASK       = 0x0F;     // 0000 1111 -> allows the dlc to be masked, okay for sure 
+        static const uint8_t RTR_MASK       = 0x40;     // 0010 0000 makes sense 
 
         static const uint8_t RXBnCTRL_RXM_STD    = 0x20;
-        static const uint8_t RXBnCTRL_RXM_EXT    = 0x40;
+        static const uint8_t RXBnCTRL_RXM_EXT    = 0x40; 
         static const uint8_t RXBnCTRL_RXM_STDEXT = 0x00;
-        static const uint8_t RXBnCTRL_RXM_MASK   = 0x60;
+        static const uint8_t RXBnCTRL_RXM_MASK   = 0x60; // allows you to receive any message. Should use this. 
         static const uint8_t RXBnCTRL_RTR        = 0x08;
         static const uint8_t RXB0CTRL_BUKT       = 0x04;
 
-        static const uint8_t MCP_SIDH = 0;
-        static const uint8_t MCP_SIDL = 1;
+        static const uint8_t MCP_SIDH = 0;          // the data array indices for writing to the MCP registers. 
+        static const uint8_t MCP_SIDL = 1;      
         static const uint8_t MCP_EID8 = 2;
         static const uint8_t MCP_EID0 = 3;
         static const uint8_t MCP_DLC  = 4;
@@ -279,12 +282,12 @@ class MCP2515
         static const uint8_t STAT_RXIF_MASK = STAT_RX0IF | STAT_RX1IF;
 
         enum /*class*/ TXBnCTRL : uint8_t {
-            TXB_ABTF   = 0x40,
-            TXB_MLOA   = 0x20,
-            TXB_TXERR  = 0x10,
-            TXB_TXREQ  = 0x08,
-            TXB_TXIE   = 0x04,
-            TXB_TXP    = 0x03
+            TXB_ABTF   = 0x40,      // Read only bit, 1 if message was aborted  
+            TXB_MLOA   = 0x20,      // Read only bit, 1 if message lost arbitration 
+            TXB_TXERR  = 0x10,      // Read only bit, 1 if error is detected 
+            TXB_TXREQ  = 0x08,      // Transmit request, <3> must be clear before writing to that buffer, set high to transmit.  
+            TXB_TXIE   = 0x04,      // Transmit interrupt enable, <2> likely don't want this for our application 
+            TXB_TXP    = 0x03       // Transmit priority bits, <1:0> highest value here has the highest priority 
         };
 
         enum /*class*/ EFLG : uint8_t {
@@ -329,7 +332,7 @@ class MCP2515
             MCP_RXF0EID0 = 0x03,
             MCP_RXF1SIDH = 0x04,
             MCP_RXF1SIDL = 0x05,
-            MCP_RXF1EID8 = 0x06,
+            MCP_RXF1EID8 = 0x06,      
             MCP_RXF1EID0 = 0x07,
             MCP_RXF2SIDH = 0x08,
             MCP_RXF2SIDL = 0x09,
@@ -405,11 +408,12 @@ class MCP2515
         static const uint32_t SPI_CLOCK = 10000000; // 10MHz
 
         static const int N_TXBUFFERS = 3;
-        static const int N_RXBUFFERS = 2;
+        static const int N_RXBUFFERS = 2;   
 
-        static const struct TXBn_REGS {
+        
+        static const struct TXBn_REGS { 
             REGISTER CTRL;
-            REGISTER SIDH;
+            REGISTER SIDH;      // note that the SIDH is the first regists in SIDH-->SIDL-->EID8-->EID0-->DLC sequence 
             REGISTER DATA;
         } TXB[N_TXBUFFERS];
 
@@ -421,7 +425,7 @@ class MCP2515
         } RXB[N_RXBUFFERS];
 
         uint8_t SPICS;
-
+        
     private:
 
         void startSPI();
@@ -435,10 +439,11 @@ class MCP2515
         void setRegisters(const REGISTER reg, const uint8_t values[], const uint8_t n);
         void modifyRegister(const REGISTER reg, const uint8_t mask, const uint8_t data);
 
+        // is this used to generate an extended ID?
         void prepareId(uint8_t *buffer, const bool ext, const uint32_t id);
     
     public:
-        MCP2515(const uint8_t _CS);
+        MCP2515(const uint8_t _CS, const uint8_t _SPI_BUS);
         ERROR reset(void);
         ERROR setConfigMode();
         ERROR setListenOnlyMode();
@@ -453,6 +458,8 @@ class MCP2515
         ERROR sendMessage(const struct can_frame *frame);
         ERROR readMessage(const RXBn rxbn, struct can_frame *frame);
         ERROR readMessage(struct can_frame *frame);
+        ERROR readrxb0(struct can_frame *frame);
+        ERROR readrxb1(struct can_frame *frame);
         bool checkReceive(void);
         bool checkError(void);
         uint8_t getErrorFlags(void);
