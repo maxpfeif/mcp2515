@@ -11,9 +11,14 @@ const struct MCP2515::RXBn_REGS MCP2515::RXB[N_RXBUFFERS] = {
     {MCP_RXB1CTRL, MCP_RXB1SIDH, MCP_RXB1DATA, CANINTF_RX1IF}
 };
 
-MCP2515::MCP2515(const uint8_t _CS)
+MCP2515::MCP2515(const uint8_t _CS, const uint8_t _SPI_BUS)
 {
-    SPI.begin();
+    SPI_BUS = _SPI_BUS;
+    if(SPI_BUS == 1) {
+        SPI1.begin();
+    } else {
+        SPI.begin();
+    }
 
     SPICS = _CS;
     pinMode(SPICS, OUTPUT);
@@ -21,19 +26,31 @@ MCP2515::MCP2515(const uint8_t _CS)
 }
 
 void MCP2515::startSPI() {
-    SPI.beginTransaction(SPISettings(SPI_CLOCK, MSBFIRST, SPI_MODE0));
+    if(SPI_BUS == 1) {
+        SPI1.beginTransaction(SPISettings(SPI_CLOCK, MSBFIRST, SPI_MODE0));
+    } else {
+        SPI.beginTransaction(SPISettings(SPI_CLOCK, MSBFIRST, SPI_MODE0));
+    }    
     digitalWrite(SPICS, LOW);
 }
 
 void MCP2515::endSPI() {
     digitalWrite(SPICS, HIGH);
-    SPI.endTransaction();
+    if(SPI_BUS == 1) {
+        SPI1.endTransaction();
+    } else {
+        SPI.endTransaction();
+    }    
 }
 
 MCP2515::ERROR MCP2515::reset(void)
 {
     startSPI();
-    SPI.transfer(INSTRUCTION_RESET);
+    if(SPI_BUS == 1) {
+        SPI1.transfer(INSTRUCTION_RESET);
+    } else {
+        SPI.transfer(INSTRUCTION_RESET);
+    }    
     endSPI();
 
     delay(10);
@@ -76,10 +93,18 @@ MCP2515::ERROR MCP2515::reset(void)
 
 uint8_t MCP2515::readRegister(const REGISTER reg)
 {
+    uint8_t ret = 0; 
+
     startSPI();
-    SPI.transfer(INSTRUCTION_READ);
-    SPI.transfer(reg);
-    uint8_t ret = SPI.transfer(0x00);
+    if(SPI_BUS == 1) {
+        SPI1.transfer(INSTRUCTION_READ);
+        SPI1.transfer(reg);
+        ret = SPI1.transfer(0x00);
+    } else {
+        SPI.transfer(INSTRUCTION_READ);
+        SPI.transfer(reg);
+        ret = SPI.transfer(0x00);
+    }    
     endSPI();
 
     return ret;
@@ -88,11 +113,21 @@ uint8_t MCP2515::readRegister(const REGISTER reg)
 void MCP2515::readRegisters(const REGISTER reg, uint8_t values[], const uint8_t n)
 {
     startSPI();
-    SPI.transfer(INSTRUCTION_READ);
-    SPI.transfer(reg);
+    if(SPI_BUS == 1) {
+        SPI1.transfer(INSTRUCTION_READ);
+        SPI1.transfer(reg);
+    } else {
+        SPI.transfer(INSTRUCTION_READ);
+        SPI.transfer(reg);
+    }    
+
     // mcp2515 has auto-increment of address-pointer
     for (uint8_t i=0; i<n; i++) {
-        values[i] = SPI.transfer(0x00);
+        if(SPI_BUS == 1){
+            values[i] = SPI1.transfer(0x00);   
+        } else {
+            values[i] = SPI.transfer(0x00);
+        }
     }
     endSPI();
 }
@@ -100,19 +135,34 @@ void MCP2515::readRegisters(const REGISTER reg, uint8_t values[], const uint8_t 
 void MCP2515::setRegister(const REGISTER reg, const uint8_t value)
 {
     startSPI();
-    SPI.transfer(INSTRUCTION_WRITE);
-    SPI.transfer(reg);
-    SPI.transfer(value);
+    if(SPI_BUS == 1){
+        SPI1.transfer(INSTRUCTION_WRITE);
+        SPI1.transfer(reg);
+        SPI1.transfer(value);
+    } else {
+        SPI.transfer(INSTRUCTION_WRITE);
+        SPI.transfer(reg);
+        SPI.transfer(value);
+    }
+
     endSPI();
 }
 
 void MCP2515::setRegisters(const REGISTER reg, const uint8_t values[], const uint8_t n)
 {
     startSPI();
-    SPI.transfer(INSTRUCTION_WRITE);
-    SPI.transfer(reg);
-    for (uint8_t i=0; i<n; i++) {
-        SPI.transfer(values[i]);
+    if(SPI_BUS == 1){
+        SPI1.transfer(INSTRUCTION_WRITE);
+        SPI1.transfer(reg);
+        for (uint8_t i=0; i<n; i++) {
+            SPI1.transfer(values[i]);
+        }
+    } else {
+        SPI.transfer(INSTRUCTION_WRITE);
+        SPI.transfer(reg);
+        for (uint8_t i=0; i<n; i++) {
+            SPI.transfer(values[i]);
+        }        
     }
     endSPI();
 }
@@ -120,18 +170,31 @@ void MCP2515::setRegisters(const REGISTER reg, const uint8_t values[], const uin
 void MCP2515::modifyRegister(const REGISTER reg, const uint8_t mask, const uint8_t data)
 {
     startSPI();
-    SPI.transfer(INSTRUCTION_BITMOD);
-    SPI.transfer(reg);
-    SPI.transfer(mask);
-    SPI.transfer(data);
+    if(SPI_BUS == 1) {
+        SPI1.transfer(INSTRUCTION_BITMOD);
+        SPI1.transfer(reg);
+        SPI1.transfer(mask);
+        SPI1.transfer(data);
+    } else {
+        SPI.transfer(INSTRUCTION_BITMOD);
+        SPI.transfer(reg);
+        SPI.transfer(mask);
+        SPI.transfer(data);
+    }
     endSPI();
 }
 
 uint8_t MCP2515::getStatus(void)
 {
+    uint8_t i = 0; 
     startSPI();
-    SPI.transfer(INSTRUCTION_READ_STATUS);
-    uint8_t i = SPI.transfer(0x00);
+    if(SPI_BUS == 1){
+        SPI1.transfer(INSTRUCTION_READ_STATUS);
+        i = SPI1.transfer(0x00);
+    } else {
+        SPI.transfer(INSTRUCTION_READ_STATUS);
+        i = SPI.transfer(0x00);
+    }
     endSPI();
 
     return i;
@@ -671,7 +734,7 @@ void MCP2515::clearInterrupts(void)
 }
 
 uint8_t MCP2515::getInterruptMask(void)
-{
+{ 
     return readRegister(MCP_CANINTE);
 }
 
