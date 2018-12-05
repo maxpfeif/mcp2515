@@ -93,21 +93,17 @@ MCP2515::ERROR MCP2515::reset(void)
 
 uint8_t MCP2515::readRegister(const REGISTER reg)
 {
-    uint8_t ret = 0; 
-
     startSPI();
     if(SPI_BUS == 1) {
         SPI1.transfer(INSTRUCTION_READ);
         SPI1.transfer(reg);
-        ret = SPI1.transfer(0x00);
+        return SPI1.transfer(0x00);
     } else {
         SPI.transfer(INSTRUCTION_READ);
         SPI.transfer(reg);
-        ret = SPI.transfer(0x00);
+        return SPI.transfer(0x00);
     }    
     endSPI();
-
-    return ret;
 }
 
 void MCP2515::readRegisters(const REGISTER reg, uint8_t values[], const uint8_t n)
