@@ -18,6 +18,7 @@ MCP2515::MCP2515(const uint8_t _CS)
     SPICS = _CS;
     pinMode(SPICS, OUTPUT);
     endSPI();
+    Serial.println("Finished initializing SPI..."); 
 }
 
 void MCP2515::startSPI() {
@@ -36,7 +37,7 @@ MCP2515::ERROR MCP2515::reset(void)
     SPI.transfer(INSTRUCTION_RESET);
     endSPI();
 
-    delay(10);
+    delay(10); // need this to wait for the device to boot.. not ideal. 
 
     uint8_t zeros[14];
     memset(zeros, 0, sizeof(zeros));
@@ -71,6 +72,7 @@ MCP2515::ERROR MCP2515::reset(void)
         }
     }*/
 
+    Serial.print("ERROR_OK = "); Serial.println(ERROR_OK);
     return ERROR_OK;
 }
 
@@ -81,7 +83,7 @@ uint8_t MCP2515::readRegister(const REGISTER reg)
     SPI.transfer(reg);
     uint8_t ret = SPI.transfer(0x00);
     endSPI();
-
+    Serial.print("retval = "); Serial.println(ret);
     return ret;
 }
 
@@ -464,11 +466,11 @@ MCP2515::ERROR MCP2515::setBitrate(const CAN_SPEED canSpeed, CAN_CLOCK canClock)
     }
 }
 
-void MCP2515::prepareId(uint8_t *buffer, const bool ext, const uint32_t id)
+void MCP2515::prepareId(uint8_t *buffer, const bool extended, const uint32_t id)
 {
     uint16_t canid = (uint16_t)(id & 0x0FFFF);
 
-    if (ext) {
+    if (extended) {
         buffer[MCP_EID0] = (uint8_t) (canid & 0xFF);
         buffer[MCP_EID8] = (uint8_t) (canid >> 8);
         canid = (uint16_t)(id >> 16);
@@ -484,7 +486,7 @@ void MCP2515::prepareId(uint8_t *buffer, const bool ext, const uint32_t id)
     }
 }
 
-MCP2515::ERROR MCP2515::setFilterMask(const MASK mask, const bool ext, const uint32_t ulData)
+MCP2515::ERROR MCP2515::setFilterMask(const MASK mask, const bool extended, const uint32_t ulData)
 {
     ERROR res = setConfigMode();
     if (res != ERROR_OK) {
@@ -492,7 +494,7 @@ MCP2515::ERROR MCP2515::setFilterMask(const MASK mask, const bool ext, const uin
     }
     
     uint8_t tbufdata[4];
-    prepareId(tbufdata, ext, ulData);
+    prepareId(tbufdata, extended, ulData);
 
     REGISTER reg;
     switch (mask) {
@@ -507,7 +509,7 @@ MCP2515::ERROR MCP2515::setFilterMask(const MASK mask, const bool ext, const uin
     return ERROR_OK;
 }
 
-MCP2515::ERROR MCP2515::setFilter(const RXF num, const bool ext, const uint32_t ulData)
+MCP2515::ERROR MCP2515::setFilter(const RXF num, const bool extended, const uint32_t ulData)
 {
     ERROR res = setConfigMode();
     if (res != ERROR_OK) {
@@ -528,7 +530,7 @@ MCP2515::ERROR MCP2515::setFilter(const RXF num, const bool ext, const uint32_t 
     }
 
     uint8_t tbufdata[4];
-    prepareId(tbufdata, ext, ulData);
+    prepareId(tbufdata, extended, ulData);
     setRegisters(reg, tbufdata, 4);
 
     return ERROR_OK;
@@ -540,11 +542,11 @@ MCP2515::ERROR MCP2515::sendMessage(const TXBn txbn, const struct can_frame *fra
 
     uint8_t data[13];
 
-    bool ext = (frame->can_id & CAN_EFF_FLAG);
+    bool extended = (frame->can_id & CAN_EFF_FLAG);
     bool rtr = (frame->can_id & CAN_RTR_FLAG);
-    uint32_t id = (frame->can_id & (ext ? CAN_EFF_MASK : CAN_SFF_MASK));
+    uint32_t id = (frame->can_id & (extended ? CAN_EFF_MASK : CAN_SFF_MASK));
 
-    prepareId(data, ext, id);
+    prepareId(data, extended, id);
 
     data[MCP_DLC] = rtr ? (frame->can_dlc | RTR_MASK) : frame->can_dlc;
 

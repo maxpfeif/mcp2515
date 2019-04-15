@@ -435,7 +435,7 @@ class MCP2515
         void setRegisters(const REGISTER reg, const uint8_t values[], const uint8_t n);
         void modifyRegister(const REGISTER reg, const uint8_t mask, const uint8_t data);
 
-        void prepareId(uint8_t *buffer, const bool ext, const uint32_t id);
+        void prepareId(uint8_t *buffer, const bool extended, const uint32_t id);
     
     public:
         MCP2515(const uint8_t _CS);
@@ -444,11 +444,11 @@ class MCP2515
         ERROR setListenOnlyMode();
         ERROR setSleepMode();
         ERROR setLoopbackMode();
-        ERROR setNormalMode();
+        ERROR setNormalMode();  
         ERROR setBitrate(const CAN_SPEED canSpeed);
         ERROR setBitrate(const CAN_SPEED canSpeed, const CAN_CLOCK canClock);
-        ERROR setFilterMask(const MASK num, const bool ext, const uint32_t ulData);
-        ERROR setFilter(const RXF num, const bool ext, const uint32_t ulData);
+        ERROR setFilterMask(const MASK num, const bool extended, const uint32_t ulData);
+        ERROR setFilter(const RXF num, const bool extended, const uint32_t ulData);
         ERROR sendMessage(const TXBn txbn, const struct can_frame *frame);
         ERROR sendMessage(const struct can_frame *frame);
         ERROR readMessage(const RXBn rxbn, struct can_frame *frame);
