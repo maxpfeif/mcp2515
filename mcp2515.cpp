@@ -164,15 +164,21 @@ MCP2515::ERROR MCP2515::setNormalMode()
 
 MCP2515::ERROR MCP2515::setMode(const CANCTRL_REQOP_MODE mode)
 {
+    
     modifyRegister(MCP_CANCTRL, CANCTRL_REQOP, mode);
 
-    unsigned long endTime = millis() + 10;
+    unsigned long endTime = millis() + 10;          // giving this 10ms to complete 
     bool modeMatch = false;
     while (millis() < endTime) {
         uint8_t newmode = readRegister(MCP_CANSTAT);
-        newmode &= CANSTAT_OPMOD;
+        
+        Serial.print("New Mode Before Masking: "); Serial.println(newmode);
+        
+        newmode &= CANSTAT_OPMOD;                   // masks with 0xE0
 
-        modeMatch = newmode == mode;
+        Serial.print("New Mode After Masking: "); Serial.println(newmode);
+
+        modeMatch = (newmode == mode);              // if the modes are the same         
 
         if (modeMatch) {
             break;
@@ -192,8 +198,11 @@ MCP2515::ERROR MCP2515::setBitrate(const CAN_SPEED canSpeed, CAN_CLOCK canClock)
 {
     ERROR error = setConfigMode();
     if (error != ERROR_OK) {
+        Serial.println("Config Mode Returned Error");
         return error;
     }
+
+    Serial.println("Successfully set config mode");
 
     uint8_t set, cfg1, cfg2, cfg3;
     set = 1;
@@ -370,6 +379,7 @@ MCP2515::ERROR MCP2515::setBitrate(const CAN_SPEED canSpeed, CAN_CLOCK canClock)
             cfg1 = MCP_16MHz_500kBPS_CFG1;
             cfg2 = MCP_16MHz_500kBPS_CFG2;
             cfg3 = MCP_16MHz_500kBPS_CFG3;
+            Serial.println("Set the cfgs to 16MHz, 500k");
             break;
 
             case (CAN_1000KBPS):                                            //   1Mbps
@@ -464,11 +474,11 @@ MCP2515::ERROR MCP2515::setBitrate(const CAN_SPEED canSpeed, CAN_CLOCK canClock)
     }
 }
 
-void MCP2515::prepareId(uint8_t *buffer, const bool ext, const uint32_t id)
+void MCP2515::prepareId(uint8_t *buffer, const bool extn, const uint32_t id)
 {
     uint16_t canid = (uint16_t)(id & 0x0FFFF);
 
-    if (ext) {
+    if (extn) {
         buffer[MCP_EID0] = (uint8_t) (canid & 0xFF);
         buffer[MCP_EID8] = (uint8_t) (canid >> 8);
         canid = (uint16_t)(id >> 16);
@@ -484,7 +494,7 @@ void MCP2515::prepareId(uint8_t *buffer, const bool ext, const uint32_t id)
     }
 }
 
-MCP2515::ERROR MCP2515::setFilterMask(const MASK mask, const bool ext, const uint32_t ulData)
+MCP2515::ERROR MCP2515::setFilterMask(const MASK mask, const bool extn, const uint32_t ulData)
 {
     ERROR res = setConfigMode();
     if (res != ERROR_OK) {
@@ -492,7 +502,7 @@ MCP2515::ERROR MCP2515::setFilterMask(const MASK mask, const bool ext, const uin
     }
     
     uint8_t tbufdata[4];
-    prepareId(tbufdata, ext, ulData);
+    prepareId(tbufdata, extn, ulData);
 
     REGISTER reg;
     switch (mask) {
@@ -507,7 +517,7 @@ MCP2515::ERROR MCP2515::setFilterMask(const MASK mask, const bool ext, const uin
     return ERROR_OK;
 }
 
-MCP2515::ERROR MCP2515::setFilter(const RXF num, const bool ext, const uint32_t ulData)
+MCP2515::ERROR MCP2515::setFilter(const RXF num, const bool extn, const uint32_t ulData)
 {
     ERROR res = setConfigMode();
     if (res != ERROR_OK) {
@@ -528,7 +538,7 @@ MCP2515::ERROR MCP2515::setFilter(const RXF num, const bool ext, const uint32_t 
     }
 
     uint8_t tbufdata[4];
-    prepareId(tbufdata, ext, ulData);
+    prepareId(tbufdata, extn, ulData);
     setRegisters(reg, tbufdata, 4);
 
     return ERROR_OK;
@@ -540,11 +550,11 @@ MCP2515::ERROR MCP2515::sendMessage(const TXBn txbn, const struct can_frame *fra
 
     uint8_t data[13];
 
-    bool ext = (frame->can_id & CAN_EFF_FLAG);
+    bool extn = (frame->can_id & CAN_EFF_FLAG);
     bool rtr = (frame->can_id & CAN_RTR_FLAG);
-    uint32_t id = (frame->can_id & (ext ? CAN_EFF_MASK : CAN_SFF_MASK));
+    uint32_t id = (frame->can_id & (extn ? CAN_EFF_MASK : CAN_SFF_MASK));
 
-    prepareId(data, ext, id);
+    prepareId(data, extn, id);
 
     data[MCP_DLC] = rtr ? (frame->can_dlc | RTR_MASK) : frame->can_dlc;
 
